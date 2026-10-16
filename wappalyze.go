@@ -51,6 +51,8 @@ type AppRegexp struct {
 	Name    string
 	Regexp  *regexp.Regexp
 	Version string
+
+	literals []string // case-folded text one of which must occur to match
 }
 
 func (app *App) FindInHeaders(headers http.Header) (matches [][]string, version string) {
@@ -263,7 +265,8 @@ func compileRegexes(s StringArray) []AppRegexp {
 			// log.Printf("warning: compiling regexp for failed: %v", regexString, err)
 		} else {
 			rv := AppRegexp{
-				Regexp: regex,
+				Regexp:   regex,
+				literals: requiredLiterals(regex),
 			}
 
 			if len(splitted) > 1 && strings.HasPrefix(splitted[0], "version") {

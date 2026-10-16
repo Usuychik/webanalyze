@@ -287,6 +287,7 @@ func (wa *WebAnalyzer) process(job *Job, appDefs *AppsDefinition) ([]Match, []st
 	scripts := doc.Find("script")
     
 	bodyStr := string(body)
+	bodyFolded := foldString(bodyStr)
 
 	for appname, app := range appDefs.Apps {
 		// TODO: Reduce complexity in this for-loop by functionalising out
@@ -299,7 +300,7 @@ func (wa *WebAnalyzer) process(job *Job, appDefs *AppsDefinition) ([]Match, []st
 		}
 
 		// check raw html
-		if m, v := findMatches(bodyStr, app.HTMLRegex); len(m) > 0 {
+		if m, v := findMatches(bodyStr, possibleMatches(bodyFolded, app.HTMLRegex)); len(m) > 0 {
 			findings.Matches = append(findings.Matches, m...)
 			findings.updateVersion(v)
 		}
@@ -381,6 +382,24 @@ func (wa *WebAnalyzer) process(job *Job, appDefs *AppsDefinition) ([]Match, []st
 	}
 
 	return apps, links, nil
+}
+
+// possibleMatches drops the regexes that cannot match the text whose
+// case-folded form is folded
+func possibleMatches(folded string, regexes []AppRegexp) []AppRegexp {
+	for i := range regexes {
+		if !regexes[i].mayMatch(folded) {
+			// copy only when something is dropped
+			kept := append([]AppRegexp(nil), regexes[:i]...)
+			for j := i + 1; j < len(regexes); j++ {
+				if regexes[j].mayMatch(folded) {
+					kept = append(kept, regexes[j])
+				}
+			}
+			return kept
+		}
+	}
+	return regexes
 }
 
 // runs a list of regexes on content
